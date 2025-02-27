@@ -43,7 +43,7 @@ let normalSpawnInterval = 500; // 正常生成间隔（0.5秒）
 let isInitialPhase = true; // 是否处于初始阶段（前10秒）
 let bombSpawnChance = 0; // 炸弹生成概率（初始为0）
 
-const units = []; // 存储所有单位
+let units = []; // 存储所有单位
 
 // 单位类型和得分规则
 const unitTypes = [
@@ -268,39 +268,45 @@ function pauseGame() {
         lastcakeTime,
         cakeSpawned,
     };
+    console.log("Game state saved:", savedGameState);
 }
 
 function resumeGame() {
-    if (savedGameState) {
-        // 恢复单位图片
-        units = savedGameState.units.map(unit => {
-            const newUnit = {
-                ...unit,
-                image: new Image(),
-                loaded: false,
-            };
-            newUnit.image.src = unitTypes.find(u => u.type === unit.type).image;
-            newUnit.image.onload = () => (newUnit.loaded = true);
-            return newUnit;
-        });
+    try {
+        if (savedGameState) {
+            // 恢复单位图片
+            units = savedGameState.units.map(unit => {
+                const newUnit = {
+                    ...unit,
+                    image: new Image(),
+                    loaded: false,
+                };
+                newUnit.image.src = unitTypes.find(u => u.type === unit.type).image;
+                newUnit.image.onload = () => (newUnit.loaded = true);
+                return newUnit;
+            });
 
-        // 恢复其他状态
-        score = savedGameState.score;
-        timeLeft = savedGameState.timeLeft;
-        basketX = savedGameState.basketX;
-        isSpeedBoostActive = savedGameState.isSpeedBoostActive;
-        speedBoostEndTime = savedGameState.speedBoostEndTime;
-        gameStartTime = savedGameState.gameStartTime;
-        lastwatchTime = savedGameState.lastwatchTime;
-        watchSpawned = savedGameState.watchSpawned;
-        lastcakeTime = savedGameState.lastcakeTime;
-        cakeSpawned = savedGameState.cakeSpawned;
+            // 恢复其他状态
+            score = savedGameState.score;
+            timeLeft = savedGameState.timeLeft;
+            basketX = savedGameState.basketX;
+            isSpeedBoostActive = savedGameState.isSpeedBoostActive;
+            speedBoostEndTime = savedGameState.speedBoostEndTime;
+            gameStartTime = savedGameState.gameStartTime;
+            lastwatchTime = savedGameState.lastwatchTime;
+            watchSpawned = savedGameState.watchSpawned;
+            lastcakeTime = savedGameState.lastcakeTime;
+            cakeSpawned = savedGameState.cakeSpawned;
+        }
+
+        // 重新启动定时器和游戏循环
+        unitSpawnInterval = setInterval(createUnit, normalSpawnInterval); // 使用正确的间隔
+        isPaused = false;
+        document.getElementById("pauseMenu").style.display = "none";
+        requestAnimationFrame(gameLoop); // 确保循环继续
+    } catch (error) {
+        console.error("Error in resumeGame:", error);
     }
-    // 重新启动定时器和游戏循环
-    unitSpawnInterval = setInterval(createUnit, 500);
-    isPaused = false;
-    document.getElementById("pauseMenu").style.display = "none";
-    requestAnimationFrame(gameLoop); // 确保循环继续
 }
 
 function quitGame() {
