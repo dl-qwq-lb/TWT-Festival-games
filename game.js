@@ -190,8 +190,10 @@ function createUnit() {
 function updateUnits() {
     for (let i = units.length - 1; i >= 0; i--) {
         const unit = units[i];
-        if (!unit.loaded) continue;
+        if (!unit.loaded) continue;        
 
+        console.log(`Unit type: ${unit.type}, Speed: ${unit.speed}`); // 打印单位类型和速度
+        
         unit.y += unit.speed; // 下落（更新Y）
 
         // 检测是否被框子接住
@@ -267,8 +269,17 @@ function pauseGame() {
         watchSpawned,
         lastcakeTime,
         cakeSpawned,
+        accumulatedTime, // 保存累积时间
     };
     console.log("Game state saved:", savedGameState);
+
+    // 打印暂停前的单位速度
+    units.forEach(unit => {
+        console.log(`Paused - Unit type: ${unit.type}, Speed: ${unit.speed}`);
+    });
+
+    // 重置 deltaTime
+    lastTime = 0;
 }
 
 function resumeGame() {
@@ -297,6 +308,7 @@ function resumeGame() {
             watchSpawned = savedGameState.watchSpawned;
             lastcakeTime = savedGameState.lastcakeTime;
             cakeSpawned = savedGameState.cakeSpawned;
+            accumulatedTime = savedGameState.accumulatedTime; // 恢复累积时间
         }
 
         // 重新启动定时器和游戏循环
@@ -304,6 +316,12 @@ function resumeGame() {
         isPaused = false;
         document.getElementById("pauseMenu").style.display = "none";
         requestAnimationFrame(gameLoop); // 确保循环继续
+
+        // 打印恢复后的单位速度
+        units.forEach(unit => {
+            console.log(`Resumed - Unit type: ${unit.type}, Speed: ${unit.speed}`);
+        });
+
     } catch (error) {
         console.error("Error in resumeGame:", error);
     }
@@ -316,7 +334,6 @@ function quitGame() {
 
 // 游戏循环
 function gameLoop(timestamp) {
-
     if (isPaused) {
         requestAnimationFrame(gameLoop); // 继续循环但不更新游戏状态
         return;
