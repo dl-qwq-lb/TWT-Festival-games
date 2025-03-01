@@ -76,7 +76,7 @@ function drawBasket() {
 // 海棠酥——提升移速
 function activateSpeedBoost() {
     isSpeedBoostActive = true;
-    basketSpeed = originalBasketSpeed * 50; // 移速翻50倍
+    basketSpeed = originalBasketSpeed * 25; // 移速翻25倍
     speedBoostEndTime = Date.now() + 5000; // 加速持续5秒
 }
 
@@ -249,7 +249,7 @@ function pauseGame() {
     isPaused = true;
     clearInterval(unitSpawnInterval); // 清除定时器
     document.getElementById("pauseMenu").style.display = "block"; // 显示暂停菜单
-
+    
     // 停止 requestAnimationFrame
     if (animationFrameId) {
         cancelAnimationFrame(animationFrameId);
@@ -277,13 +277,17 @@ function pauseGame() {
         lastcakeTime,
         cakeSpawned,
         accumulatedTime, // 保存累积时间
+        pauseTime: Date.now(), // 新增：记录暂停时的系统时间
     };
+
+    // 重置 deltaTime
+    lastTime = 0;
 }
 
 function resumeGame() {
     try {
         if (savedGameState) {
-            // 恢复单位图片
+            // 恢复单位图片和其他状态...
             units = savedGameState.units.map(unit => {
                 const newUnit = {
                     ...unit,
@@ -306,15 +310,20 @@ function resumeGame() {
             watchSpawned = savedGameState.watchSpawned;
             lastcakeTime = savedGameState.lastcakeTime;
             cakeSpawned = savedGameState.cakeSpawned;
-            accumulatedTime = savedGameState.accumulatedTime; // 恢复累积时间
+            accumulatedTime = savedGameState.accumulatedTime;
+
+            // 补偿暂停期间的时间偏移
+            const pauseDuration = Date.now() - savedGameState.pauseTime;
+
+            // 更新 accumulatedTime 来反映暂停期间的时间流逝
+            accumulatedTime += pauseDuration;
         }
 
         // 重新启动定时器和游戏循环
-        unitSpawnInterval = setInterval(createUnit, normalSpawnInterval); // 使用正确的间隔
+        unitSpawnInterval = setInterval(createUnit, normalSpawnInterval);
         isPaused = false;
         document.getElementById("pauseMenu").style.display = "none";
-        lastTime = Date.now(); // 重置 lastTime
-        animationFrameId = requestAnimationFrame(gameLoop); // 重新启动 gameLoop
+        animationFrameId = requestAnimationFrame(gameLoop);
     } catch (error) {
         console.error("Error in resumeGame:", error);
     }
@@ -327,9 +336,7 @@ function quitGame() {
 
 // 游戏循环
 function gameLoop(timestamp) {
-    if (isPaused) {
-        return;
-    }
+    if (isPaused) return;
 
     if (!lastTime) lastTime = timestamp;
 
