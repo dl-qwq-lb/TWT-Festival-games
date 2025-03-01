@@ -9,7 +9,7 @@ const basketWidth = 100;
 const basketHeight = 60; 
 
 // 框子属性
-const originalBasketSpeed = 0.01; // 移动速度系数（0~1，值越大移动越快）
+const originalBasketSpeed = 0.02; // 移动速度系数（0~1，值越大移动越快）
 let targetBasketX = (canvas.width - basketWidth) / 2; // 目标位置
 let basketX = targetBasketX; // 当前实际位置
 
@@ -37,6 +37,8 @@ let isPaused = false; // 是否暂停
 let savedGameState = null; // 保存游戏状态
 let unitSpawnInterval = null; // 单位生成定时器
 let animationFrameId = null; // 用于存储 requestAnimationFrame 的 ID
+let pauseDuration = 0;
+let pauseTotal = 0;
 
 // 游戏状态变量（生成机制）
 let initialSpawnInterval = 1000; // 初始生成间隔（1秒）
@@ -77,12 +79,12 @@ function drawBasket() {
 function activateSpeedBoost() {
     isSpeedBoostActive = true;
     basketSpeed = originalBasketSpeed * 25; // 移速翻25倍
-    speedBoostEndTime = Date.now() + 5000; // 加速持续5秒
+    speedBoostEndTime = lastTime + 4000; // 加速持续4秒
 }
 
 function createUnit() {
     // 计算游戏已进行的时间
-    const currentGameTime = (Date.now() - gameStartTime) / 1000;
+    const currentGameTime = (Date.now() - gameStartTime - pauseTotal) / 1000;
     
     // 生成条件：游戏开始时间；生成数量上限；生成间隔至少10秒
     const watchsituation =
@@ -102,9 +104,9 @@ function createUnit() {
 
     // 动态调整炸弹生成概率
     if (currentGameTime >= 15 && currentGameTime < 30) {
-        bombSpawnChance = 0.25; // 15-30秒生成概率为1/4
+        bombSpawnChance = 0.20; // 15-30秒生成概率为1/5
     } else if (currentGameTime >= 30) {
-        bombSpawnChance = 1 / 3; // 30秒后生成概率为1/3
+        bombSpawnChance = 0.40; // 30秒后生成概率为3/10
     }
 
     if (watchsituation && Math.random() < 0.1) {
@@ -270,18 +272,15 @@ function pauseGame() {
             score: unit.score,
         })), // 仅保存必要属性
         isSpeedBoostActive,
-        speedBoostEndTime,
+        speedBoostEndTime: isSpeedBoostActive ? speedBoostEndTime - (Date.now() - gameStartTime) : 0, // 转换为基于游戏时间的偏移
         gameStartTime,
         lastwatchTime,
         watchSpawned,
         lastcakeTime,
         cakeSpawned,
         accumulatedTime, // 保存累积时间
-        pauseTime: Date.now(), // 新增：记录暂停时的系统时间
+        pauseTime: Date.now(),    // 记录暂停时的系统时间
     };
-
-    // 重置 deltaTime
-    lastTime = 0;
 }
 
 function resumeGame() {
@@ -304,20 +303,17 @@ function resumeGame() {
             timeLeft = savedGameState.timeLeft;
             basketX = savedGameState.basketX;
             isSpeedBoostActive = savedGameState.isSpeedBoostActive;
-            speedBoostEndTime = savedGameState.speedBoostEndTime;
+            speedBoostEndTime = savedGameState.isSpeedBoostActive ? 
+            savedGameState.speedBoostEndTime + (Date.now() - savedGameState.gameStartTime) : 0; // 恢复为系统时间
             gameStartTime = savedGameState.gameStartTime;
             lastwatchTime = savedGameState.lastwatchTime;
             watchSpawned = savedGameState.watchSpawned;
             lastcakeTime = savedGameState.lastcakeTime;
             cakeSpawned = savedGameState.cakeSpawned;
             accumulatedTime = savedGameState.accumulatedTime;
-
-            // 补偿暂停期间的时间偏移
-            const pauseDuration = Date.now() - savedGameState.pauseTime;
-
-            // 更新 accumulatedTime 来反映暂停期间的时间流逝
-            accumulatedTime += pauseDuration;
-        }
+            pauseDuration = Date.now() - savedGameState.pauseTime;  // 暂停总时间
+            pauseTotal += pauseDuration;
+    }
 
         // 重新启动定时器和游戏循环
         unitSpawnInterval = setInterval(createUnit, normalSpawnInterval);
@@ -335,31 +331,38 @@ function quitGame() {
 }
 
 // 游戏循环
-function gameLoop(timestamp) {
+function gameLoop() {
     if (isPaused) return;
 
-    if (!lastTime) lastTime = timestamp;
+    const currentTime = Date.now(); // 使用系统时间
+    if (!lastTime) lastTime = currentTime;
+
+    if(pauseDuration){  
+        lastTime += pauseDuration; 
+        pauseDuration = 0;
+    }// 调整 lastTime
 
     // 计算时间差（毫秒）
-    const deltaTime = timestamp - lastTime;
-    lastTime = timestamp;
+    const deltaTime = currentTime - lastTime;
+    lastTime = currentTime;
     accumulatedTime += deltaTime;
 
     // 每累积1000毫秒（1秒）更新一次时间
     if (accumulatedTime >= 1000) {
         timeLeft--;
-        accumulatedTime -= 1000; // 重置累积时间
-        updateTimer(); // 更新计时器显示
+        accumulatedTime -= 1000;
+        updateTimer();
     }
 
+    // 加速状态检测（基于系统时间）
     if (isSpeedBoostActive && Date.now() >= speedBoostEndTime) {
         isSpeedBoostActive = false;
-        basketSpeed = originalBasketSpeed; // 恢复原始速度
+        basketSpeed = originalBasketSpeed;
     }
 
     // 更新框子位置
     const dx = targetBasketX - basketX;
-    basketX += dx * basketSpeed; // 根据速度系数移动
+    basketX += dx * basketSpeed;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     updateUnits();
@@ -372,7 +375,7 @@ function gameLoop(timestamp) {
         return;
     }
 
-    animationFrameId = requestAnimationFrame(gameLoop); // 继续调用 gameLoop
+    animationFrameId = requestAnimationFrame(gameLoop);
 }
 
 // 控制框子移动
