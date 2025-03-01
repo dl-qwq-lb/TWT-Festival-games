@@ -36,6 +36,7 @@ let basketSpeed = originalBasketSpeed; // 保存原始速度
 let isPaused = false; // 是否暂停
 let savedGameState = null; // 保存游戏状态
 let unitSpawnInterval = null; // 单位生成定时器
+let animationFrameId = null; // 用于存储 requestAnimationFrame 的 ID
 
 // 游戏状态变量（生成机制）
 let initialSpawnInterval = 1000; // 初始生成间隔（1秒）
@@ -193,7 +194,7 @@ function updateUnits() {
         if (!unit.loaded) continue;        
 
         console.log(`Unit type: ${unit.type}, Speed: ${unit.speed}`); // 打印单位类型和速度
-        
+
         unit.y += unit.speed; // 下落（更新Y）
 
         // 检测是否被框子接住
@@ -249,6 +250,12 @@ function pauseGame() {
     clearInterval(unitSpawnInterval); // 清除定时器
     document.getElementById("pauseMenu").style.display = "block"; // 显示暂停菜单
 
+    // 停止 requestAnimationFrame
+    if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+    }
+
     // 保存游戏状态
     savedGameState = {
         score: score,
@@ -271,15 +278,6 @@ function pauseGame() {
         cakeSpawned,
         accumulatedTime, // 保存累积时间
     };
-    console.log("Game state saved:", savedGameState);
-
-    // 打印暂停前的单位速度
-    units.forEach(unit => {
-        console.log(`Paused - Unit type: ${unit.type}, Speed: ${unit.speed}`);
-    });
-
-    // 重置 deltaTime
-    lastTime = 0;
 }
 
 function resumeGame() {
@@ -315,13 +313,8 @@ function resumeGame() {
         unitSpawnInterval = setInterval(createUnit, normalSpawnInterval); // 使用正确的间隔
         isPaused = false;
         document.getElementById("pauseMenu").style.display = "none";
-        requestAnimationFrame(gameLoop); // 确保循环继续
-
-        // 打印恢复后的单位速度
-        units.forEach(unit => {
-            console.log(`Resumed - Unit type: ${unit.type}, Speed: ${unit.speed}`);
-        });
-
+        lastTime = Date.now(); // 重置 lastTime
+        animationFrameId = requestAnimationFrame(gameLoop); // 重新启动 gameLoop
     } catch (error) {
         console.error("Error in resumeGame:", error);
     }
@@ -335,7 +328,6 @@ function quitGame() {
 // 游戏循环
 function gameLoop(timestamp) {
     if (isPaused) {
-        requestAnimationFrame(gameLoop); // 继续循环但不更新游戏状态
         return;
     }
 
@@ -373,7 +365,7 @@ function gameLoop(timestamp) {
         return;
     }
 
-    requestAnimationFrame(gameLoop);
+    animationFrameId = requestAnimationFrame(gameLoop); // 继续调用 gameLoop
 }
 
 // 控制框子移动
