@@ -17,6 +17,7 @@ const basketImage = new Image();
 basketImage.src = "assets/images/basket.png";
 
 // 游戏状态变量（时间同步）
+let gameTime = 0;
 let lastTime = 0;   // 上一次更新的时间戳
 let accumulatedTime = 0;    // 累积时间差
 
@@ -45,6 +46,14 @@ let initialSpawnInterval = 1000; // 初始生成间隔（1秒）
 let normalSpawnInterval = 500; // 正常生成间隔（0.5秒）
 let isInitialPhase = true; // 是否处于初始阶段（前10秒）
 let bombSpawnChance = 0; // 炸弹生成概率（初始为0）
+
+// 成就状态变量
+let achievements = {
+    A: false,
+    B: false,
+    C: false,
+    D: false
+};
 
 let units = []; // 存储所有单位
 
@@ -84,7 +93,7 @@ function activateSpeedBoost() {
 
 function createUnit() {
     // 计算游戏已进行的时间
-    const currentGameTime = (Date.now() - gameStartTime - pauseTotal) / 1000;
+    const currentGameTime = (performance.now() - gameStartTime - pauseTotal) / 1000;
     
     // 生成条件：游戏开始时间；生成数量上限；生成间隔至少10秒
     const watchsituation =
@@ -111,7 +120,7 @@ function createUnit() {
 
     if (watchsituation && Math.random() < 0.1) {
         const unitType = unitTypes.find(u => u.type === "watch");
-        const x = Math.random() * (canvas.width - 50);
+        const x = Math.random() * (canvas.width - 100);
         const y = 0;
         const unit = {
             type: unitType.type,
@@ -132,7 +141,7 @@ function createUnit() {
 
     if (cakesituation && Math.random() < 0.1) {
         const unitType = unitTypes.find(u => u.type === "cake");
-        const x = Math.random() * (canvas.width - 50);
+        const x = Math.random() * (canvas.width - 100);
         const y = 0;
         const unit = {
             type: unitType.type,
@@ -173,7 +182,7 @@ function createUnit() {
 
     // 生成普通单位
     const unitType = unitTypes[Math.floor(Math.random() * (unitTypes.length - 3))];
-    const x = Math.random() * (canvas.width - 50);
+    const x = Math.random() * (canvas.width - 200);
     const y = 0;
     const unit = {
         type: unitType.type,
@@ -194,8 +203,6 @@ function updateUnits() {
     for (let i = units.length - 1; i >= 0; i--) {
         const unit = units[i];
         if (!unit.loaded) continue;        
-
-        console.log(`Unit type: ${unit.type}, Speed: ${unit.speed}`); // 打印单位类型和速度
 
         unit.y += unit.speed; // 下落（更新Y）
 
@@ -237,6 +244,7 @@ function drawUnits() {
 // 更新得分
 function updateScore() {
     document.getElementById("score").textContent = `得分: ${score}`;
+    checkAchievements(); // 新增此行
 }
 
 // 更新时间
@@ -272,17 +280,19 @@ function pauseGame() {
             score: unit.score,
         })), // 仅保存必要属性
         isSpeedBoostActive,
-        speedBoostEndTime: isSpeedBoostActive ? speedBoostEndTime - (Date.now() - gameStartTime) : 0, // 转换为基于游戏时间的偏移
+        speedBoostEndTime: isSpeedBoostActive ? speedBoostEndTime - (performance.now() - gameStartTime) : 0, // 转换为基于游戏时间的偏移
         gameStartTime,
         lastwatchTime,
         watchSpawned,
         lastcakeTime,
         cakeSpawned,
         accumulatedTime, // 保存累积时间
-        pauseTime: Date.now(),    // 记录暂停时的系统时间
+        lastTime: lastTime,
+        pauseTime: performance.now(),    // 记录暂停时的系统时间
     };
 }
 
+// 恢复暂停数据
 function resumeGame() {
     try {
         if (savedGameState) {
@@ -304,15 +314,18 @@ function resumeGame() {
             basketX = savedGameState.basketX;
             isSpeedBoostActive = savedGameState.isSpeedBoostActive;
             speedBoostEndTime = savedGameState.isSpeedBoostActive ? 
-            savedGameState.speedBoostEndTime + (Date.now() - savedGameState.gameStartTime) : 0; // 恢复为系统时间
+            savedGameState.speedBoostEndTime + (performance.now() - savedGameState.gameStartTime) : 0; // 恢复为系统时间
             gameStartTime = savedGameState.gameStartTime;
             lastwatchTime = savedGameState.lastwatchTime;
             watchSpawned = savedGameState.watchSpawned;
             lastcakeTime = savedGameState.lastcakeTime;
             cakeSpawned = savedGameState.cakeSpawned;
             accumulatedTime = savedGameState.accumulatedTime;
-            pauseDuration = Date.now() - savedGameState.pauseTime;  // 暂停总时间
+            lastTime = savedGameState.lastTime; // 恢复保存的lastTime
+            pauseDuration = performance.now() - savedGameState.pauseTime;
+            lastTime += pauseDuration; // 补偿暂停时间
             pauseTotal += pauseDuration;
+            pauseDuration = 0; // 重置避免重复处理  
     }
 
         // 重新启动定时器和游戏循环
@@ -325,22 +338,97 @@ function resumeGame() {
     }
 }
 
+// 退出游戏
 function quitGame() {
     alert("游戏已退出！");
     window.location.reload(); // 刷新页面重新开始
+}
+
+// 成就检测
+function checkAchievements() {
+    // A: 得分130
+    if (!achievements.A && score >= 130) {
+        unlockAchievement('A');
+    }
+    
+    // B: 秒表全接中（假设最多生成3个）
+    if (!achievements.B && watchSpawned === 3 && units.filter(u => u.type === 'watch').length === 0) {
+        unlockAchievement('B');
+    }
+    
+    // C: 蛋糕全吃到（假设最多生成6个）
+    if (!achievements.C && cakeSpawned === 6 && units.filter(u => u.type === 'cake').length === 0) {
+        unlockAchievement('C');
+    }
+    
+    // D: 总分260
+    if (!achievements.D && score >= 260) {
+        unlockAchievement('D');
+    }
+}
+
+// 成就解锁
+function unlockAchievement(type) {
+    achievements[type] = true;
+    saveAchievements(); // 先保存数据
+    
+    // 延迟匹配元素应对动态生成元素
+    setTimeout(() => {
+        const element = document.querySelector(`.achievement[data-type="${type}"]`);
+        if (element) {
+            element.classList.add('unlocked');
+            // 显示解锁提示...
+        }
+    }, 100); // 100ms延迟确保元素存在
+}
+
+// 保存成就
+function saveAchievements() {
+    try {
+        localStorage.setItem('gameAchievements', JSON.stringify(achievements));
+    } catch (e) {
+        console.error("保存成就失败:", e);
+    }
+}
+
+// 加载成就
+function loadAchievements() {
+    try {
+        const saved = localStorage.getItem('gameAchievements');
+        if (saved) {
+            const loaded = JSON.parse(saved);
+            // 加强数据校验
+            if (loaded && typeof loaded === 'object' && 'A' in loaded && 'B' in loaded) {
+                achievements = loaded;
+                // 增加延迟确保元素存在
+                setTimeout(() => {
+                    Object.keys(achievements).forEach(type => {
+                        if (achievements[type]) {
+                            const element = document.querySelector(`.achievement[data-type="${type}"]`);
+                            if (element) {
+                                element.classList.add('unlocked');
+                                // 强制样式更新（针对部分浏览器缓存问题）
+                                element.style.display = 'none';
+                                element.offsetHeight; // 触发重绘
+                                element.style.display = '';
+                            }
+                        }
+                    });
+                }, 50); // 50ms延迟确保动态元素加载完成
+            }
+        }
+    } catch (e) {
+        console.error("加载成就失败:", e);
+        localStorage.removeItem('gameAchievements');
+    }
 }
 
 // 游戏循环
 function gameLoop() {
     if (isPaused) return;
 
-    const currentTime = Date.now(); // 使用系统时间
+    const currentTime = performance.now(); // 使用系统时间
     if (!lastTime) lastTime = currentTime;
-
-    if(pauseDuration){  
-        lastTime += pauseDuration; 
-        pauseDuration = 0;
-    }// 调整 lastTime
 
     // 计算时间差（毫秒）
     const deltaTime = currentTime - lastTime;
@@ -355,7 +443,7 @@ function gameLoop() {
     }
 
     // 加速状态检测（基于系统时间）
-    if (isSpeedBoostActive && Date.now() >= speedBoostEndTime) {
+    if (isSpeedBoostActive && performance.now() >= speedBoostEndTime) {
         isSpeedBoostActive = false;
         basketSpeed = originalBasketSpeed;
     }
@@ -397,10 +485,13 @@ document.addEventListener("visibilitychange", () => {
 document.getElementById("pauseButton").addEventListener("click", pauseGame);
 document.getElementById("resumeButton").addEventListener("click", resumeGame);
 document.getElementById("quitButton").addEventListener("click", quitGame);
+// 等待DOM就绪，在页面元素创建后立即加载成就
+document.addEventListener('DOMContentLoaded', function() { loadAchievements(); });
 
 
 function startGame() {
-    gameStartTime = Date.now();
+    loadAchievements(); // 加载成就           
+    gameStartTime = performance.now();
     isInitialPhase = true; // 初始阶段
     bombSpawnChance = 0; // 初始炸弹生成概率
     unitSpawnInterval = setInterval(createUnit, initialSpawnInterval); // 启动单位生成
@@ -408,4 +499,4 @@ function startGame() {
 }
 
 // 初始化游戏
-startGame();
+startGame();          
