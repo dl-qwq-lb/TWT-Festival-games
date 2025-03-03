@@ -1,6 +1,5 @@
 // scheduled 版本——蛋糕改冰块用来减速；新增防护罩；成就系统完善
 
-
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
@@ -12,7 +11,7 @@ const basketWidth = 100;
 const basketHeight = 60; 
 
 // 框子属性
-const originalBasketSpeed = 0.02; // 移动速度系数（0~1，值越大移动越快）
+const originalBasketSpeed = 0.18; // 移动速度系数（0~1，值越大移动越快）
 let targetBasketX = (canvas.width - basketWidth) / 2; // 目标位置
 let basketX = targetBasketX; // 当前实际位置
 
@@ -29,16 +28,16 @@ let gameStartTime = 0;  // 游戏开始的时间戳
 let lastwatchTime = 0;   // 上次生成特殊单位的时间
 let watchSpawned = 0;    // 已生成的秒表数量
 
-// 游戏状态变量（加速）
+// 游戏状态变量（护盾）
 let lastcakeTime = 0;   // 上次生成特殊单位的时间
 let cakeSpawned = 0;    // 已生成的海棠酥数量
-let isSpeedBoostActive = false; // 是否处于加速状态
-let speedBoostEndTime = 0;  // 加速结束时间
-let basketSpeed = originalBasketSpeed; // 保存原始速度
-
-// 游戏状态变量（护盾）
 let isShieldActive = false;         // 是否处于护盾状态
 let shieldEndTime = 0;              // 护盾结束时间戳
+
+// 游戏状态变量（冰）
+let isSpeedReduceActive = false; // 是否处于加速状态
+let speedReduceEndTime = 0;  // 加速结束时间
+let basketSpeed = originalBasketSpeed; // 保存原始速度
 
 // 游戏状态变量（暂停）
 let isPaused = false; // 是否暂停
@@ -66,11 +65,12 @@ let units = []; // 存储所有单位
 
 // 单位类型和得分规则
 const unitTypes = [
-    { type: "petal", image: "assets/images/petal.png", speed: 1.5, score: 2, effect:""},
-    { type: "flower", image: "assets/images/flower.png", speed: 2.5, score: 5, effect:""},
-    { type: "bomb", image: "assets/images/bomb.png", speed: 3, score: -15, effect: ""},
-    { type: "cake", image: "assets/images/cake.png", speed: 3.5, score: 0, effect: "shield" }, 
+    { type: "petal", image: "assets/images/petal.png", speed: 1.5, score: 1, effect:""},
+    { type: "flower", image: "assets/images/flower.png", speed: 2.5, score: 4, effect:""},
+    { type: "bomb", image: "assets/images/bomb.png", speed: 3, score: -10, effect: ""},
+    { type: "cake", image: "assets/images/cake.png", speed: 3.5, score: 4, effect: "shield" }, 
     { type: "watch", image: "assets/images/watch.png", speed: 3.5, score: 0, effect: "time", },
+    { type: "ice", image: "assets/images/ice.png", speed: 3, score: -3, effect: "slow", },
 ];
 
 // 绘制框子
@@ -107,11 +107,12 @@ function drawBasket() {
     }
 }
 
-// 海棠酥——提升移速
-function activateSpeedBoost() {
-    isSpeedBoostActive = true;
-    basketSpeed = originalBasketSpeed * 25; // 移速翻25倍
-    speedBoostEndTime = lastTime + 4000; // 加速持续4秒
+// 冰-——降低移速
+function activateSpeedReduce() {
+    isSpeedReduceActive = true;
+    basketSpeed = originalBasketSpeed / 6; // 移速除以6
+    speedReduceEndTime = lastTime + 4000; // 加速持续4秒
+    console.log("已被冰冻，持续4秒");
 }
 
 function activateShield() {
@@ -142,9 +143,9 @@ function createUnit() {
 
     // 动态调整炸弹生成概率
     if (currentGameTime >= 15 && currentGameTime < 30) {
-        bombSpawnChance = 0.20; // 15-30秒生成概率为1/5
+        bombSpawnChance = 0.15; // 15-30秒生成概率为0.15
     } else if (currentGameTime >= 30) {
-        bombSpawnChance = 0.40; // 30秒后生成概率为3/10
+        bombSpawnChance = 0.30; // 30秒后生成概率为0.30
     }
 
     if (watchsituation && Math.random() < 0.1) {
@@ -178,6 +179,7 @@ function createUnit() {
             x: x,
             y: y,
             speed: unitType.speed,
+            score: unitType.score,
             effect: unitType.effect,
             loaded: false,
         };
@@ -192,7 +194,7 @@ function createUnit() {
     // 生成炸弹的逻辑
     if (currentGameTime >= 15 && Math.random() < bombSpawnChance) {
         const unitType = unitTypes.find(u => u.type === "bomb");
-        const x = Math.random() * (canvas.width - 50);
+        const x = Math.random() * (canvas.width - 100);
         const y = 0;
         const unit = {
             type: unitType.type,
@@ -209,8 +211,28 @@ function createUnit() {
         return; // 生成炸弹后不再生成其他单位
     }
 
+    if (currentGameTime >= 15 && Math.random() < bombSpawnChance) {
+        const unitType = unitTypes.find(u => u.type === "ice"); 
+        const x = Math.random() * (canvas.width - 100);
+        const y = 0;
+        const unit = {
+            type: unitType.type,
+            image: new Image(),
+            x: x,
+            y: y,
+            speed: unitType.speed,
+            score: unitType.score,
+            effect: unitType.effect,
+            loaded: false,
+        };
+        unit.image.onload = () => (unit.loaded = true);
+        unit.image.src = unitType.image;
+        units.push(unit);
+        return; // 生成后不再生成其他单位
+    }
+
     // 生成普通单位
-    const unitType = unitTypes[Math.floor(Math.random() * (unitTypes.length - 3))];
+    const unitType = unitTypes[Math.floor(Math.random() * (unitTypes.length - 4))];
     const x = Math.random() * (canvas.width - 200);
     const y = 0;
     const unit = {
@@ -247,19 +269,19 @@ function updateUnits() {
                     score += unit.score;                    
                 }
             }
-
             else if (unit.effect === "time") {
                 timeLeft += 5; // 延长5秒
                 updateTimer();
             } 
-            else if(unit.effect === "speed") {
-                activateSpeedBoost();                
+            else if(unit.effect === "slow") {
+                if (!isShieldActive) { // 仅在无护盾时扣分
+                    score += unit.score;  
+                    activateSpeedReduce();                     
+                }           
             }
-
             else if (unit.effect === "shield") {
                 activateShield();                
             }
-
             else {
                 score += unit.score;
             }
@@ -318,9 +340,9 @@ function pauseGame() {
             effect: unit.effect,
             score: unit.score,
         })), // 仅保存必要属性
-        isSpeedBoostActive,
+        isSpeedReduceActive,
         isShieldActive,
-        speedBoostEndTime: isSpeedBoostActive ? speedBoostEndTime - (performance.now() - gameStartTime) : 0, // 转换为基于游戏时间的偏移
+        speedReduceEndTime: isSpeedReduceActive ? speedReduceEndTime - (performance.now() - gameStartTime) : 0, // 转换为基于游戏时间的偏移
         shieldEndTime: isShieldActive ? shieldEndTime - (performance.now() - gameStartTime) : 0,
         gameStartTime,
         lastwatchTime,
@@ -353,11 +375,11 @@ function resumeGame() {
             score = savedGameState.score;
             timeLeft = savedGameState.timeLeft;
             basketX = savedGameState.basketX;
-            isSpeedBoostActive = savedGameState.isSpeedBoostActive;
+            isSpeedReduceActive = savedGameState.isSpeedReduceActive;
             isShieldActive = savedGameState.isShieldActive;
 
-            speedBoostEndTime = savedGameState.isSpeedBoostActive ? 
-            savedGameState.speedBoostEndTime + (performance.now() - savedGameState.gameStartTime) : 0; // 恢复为系统时间
+            speedReduceEndTime = savedGameState.isSpeedReduceActive ? 
+            savedGameState.speedReduceEndTime + (performance.now() - savedGameState.gameStartTime) : 0; // 恢复为系统时间
 
             shieldEndTime = savedGameState.isShieldActive ? 
             savedGameState.shieldEndTime + (performance.now() - savedGameState.gameStartTime) : 0;
@@ -489,9 +511,9 @@ function gameLoop() {
         updateTimer();
     }
 
-    // 加速状态检测
-    if (isSpeedBoostActive && performance.now() >= speedBoostEndTime) {
-        isSpeedBoostActive = false;
+    // 减速状态检测
+    if (isSpeedReduceActive && performance.now() >= speedReduceEndTime) {
+        isSpeedReduceActive = false;
         basketSpeed = originalBasketSpeed;
     }
 
@@ -546,7 +568,6 @@ function startGame() {
     loadAchievements(); // 加载成就           
     gameStartTime = performance.now();
     isInitialPhase = true; // 初始阶段
-    isShieldActive = false; // 确保新游戏开始无护盾
     bombSpawnChance = 0; // 初始炸弹生成概率
     unitSpawnInterval = setInterval(createUnit, initialSpawnInterval); // 启动单位生成
     requestAnimationFrame(gameLoop);
