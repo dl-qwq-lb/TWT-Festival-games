@@ -1,4 +1,5 @@
 // scheduled 版本——蛋糕改冰块用来减速；新增防护罩；成就系统完善
+// 最清闲和累计游戏次数未做
 
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
@@ -38,6 +39,8 @@ let shieldEndTime = 0;              // 护盾结束时间戳
 let isSpeedReduceActive = false; // 是否处于加速状态
 let speedReduceEndTime = 0;  // 加速结束时间
 let basketSpeed = originalBasketSpeed; // 保存原始速度
+let iceTimeStart = 0;   // 冰冻起始时间
+let iceTimeTotal = 0;   // 冰冻总时间
 
 // 游戏状态变量（暂停）
 let isPaused = false; // 是否暂停
@@ -52,13 +55,15 @@ let initialSpawnInterval = 1000; // 初始生成间隔（1秒）
 let normalSpawnInterval = 500; // 正常生成间隔（0.5秒）
 let isInitialPhase = true; // 是否处于初始阶段（前10秒）
 let bombSpawnChance = 0; // 炸弹生成概率（初始为0）
+let bombCatchTimes = 0; // 接到炸弹的次数
 
 // 成就状态变量
 let achievements = {
-    A: false,
-    B: false,
-    C: false,
-    D: false
+    A: false,   // 野路子——分数130+ 胜利
+    B: false,   // Alter the future / 时间赛跑者——接住所有秒表
+    C: false,   // 接住天大鹅——接住所有六只鹅
+    D: false,   // 大户人家——碰到十次炸弹仍然胜利
+    E: false,   // 冰冻达人——冰冻时间达到33秒
 };
 
 let units = []; // 存储所有单位
@@ -109,10 +114,12 @@ function drawBasket() {
 
 // 冰-——降低移速
 function activateSpeedReduce() {
+    if(!isSpeedReduceActive){
+        iceTimeStart = performance.now();
+    }
     isSpeedReduceActive = true;
     basketSpeed = originalBasketSpeed / 6; // 移速除以6
-    speedReduceEndTime = lastTime + 4000; // 加速持续4秒
-    console.log("已被冰冻，持续4秒");
+    speedReduceEndTime = lastTime + 4000; // 加速持续4秒    
 }
 
 function activateShield() {
@@ -266,7 +273,8 @@ function updateUnits() {
             // 炸弹处理逻辑
             if (unit.type === "bomb") {
                 if (!isShieldActive) { // 仅在无护盾时扣分
-                    score += unit.score;                    
+                    score += unit.score;  
+                    bombCatchTimes++;                  
                 }
             }
             else if (unit.effect === "time") {
@@ -415,8 +423,8 @@ function quitGame() {
 
 // 成就检测
 function checkAchievements() {
-    // A: 得分130
-    if (!achievements.A && score >= 130) {
+    // A: 取得胜利
+    if (!achievements.A && score >= 130 && timeLeft < 0.25) {
         unlockAchievement('A');
     }
     
@@ -425,14 +433,19 @@ function checkAchievements() {
         unlockAchievement('B');
     }
     
-    // C: 蛋糕全吃到（假设最多生成6个）
+    // C: 大鹅全吃到（假设最多生成6个）
     if (!achievements.C && cakeSpawned === 6 && units.filter(u => u.type === 'cake').length === 0) {
         unlockAchievement('C');
     }
     
-    // D: 总分260
-    if (!achievements.D && score >= 260) {
+    // D: 大户人家
+    if (!achievements.D && score >= 130 && timeLeft < 0.25 && bombCatchTimes >= 5) {
         unlockAchievement('D');
+    }
+
+    // E：冰冻达人    
+    if (!achievements.E && iceTimeTotal >= 33000) {
+        unlockAchievement('E');
     }
 }
 
@@ -466,7 +479,6 @@ function loadAchievements() {
         const saved = localStorage.getItem('gameAchievements');
         if (saved) {
             const loaded = JSON.parse(saved);
-            // 加强数据校验
             if (loaded && typeof loaded === 'object' && 'A' in loaded && 'B' in loaded) {
                 achievements = loaded;
                 // 增加延迟确保元素存在
@@ -515,6 +527,8 @@ function gameLoop() {
     if (isSpeedReduceActive && performance.now() >= speedReduceEndTime) {
         isSpeedReduceActive = false;
         basketSpeed = originalBasketSpeed;
+        iceTimeTotal += performance.now() - iceTimeStart - pauseDuration;
+        console.log("frozentime:", iceTimeTotal);
     }
 
     // 护盾状态检测
