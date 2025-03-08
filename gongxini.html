@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>游戏结束</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+/* 弹窗样式 */
+.popup {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.popup-content {
+  background: white;
+  padding: 20px;
+  border-radius: 15px;
+  text-align: center;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  max-width: 300px;
+}
+
+/* 按钮样式 */
+button {
+  margin-top: 10px;
+  padding: 10px 20px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+button:hover {
+  background: #0056b3;
+}
+
+/* 动画效果 */
+.popup {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.popup.show {
+  display: flex;
+  opacity: 1;
+}
+
+#close-popup {
+  margin-top: 20px;
+  padding: 10px 20px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        .score-display {
+            font-size: 36px;
+            color: #ff5722;
+            margin: 20px 0;
+        }
+        .buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            color: #fff;
+            background-color: #007bff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .game-record {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>恭喜</h1>
+        <div class="score-display">您的得分是 <span id="score-display">0</span> 分</div>
+        <div class="buttons">
+            <button onclick="restartGame()">再来一局</button>
+            <button onclick="viewRecord()">游戏记录</button>
+        </div>
+        <div class="game-record">
+            <p>游戏记录：</p>
+            <ul id="record-list">
+                <li>1. 132分</li>
+                <li>2. 120分</li>
+                <li>3. 110分</li>
+            </ul>
+        </div>
+        <!-- 成就弹窗 -->
+  <div id="achievement-popup" class="popup">
+    <div class="popup-content">
+      <h2>恭喜</h2>
+      <h3 id="achievement-title">成就名称</h3>
+      <p id="achievement-description">成就描述</p >
+    </div>
+  </div>
+    <script>
+        // 模拟重新开始游戏
+        function restartGame() {
+            window.location.href="index.html";
+        }
+
+        // 查看游戏记录
+        function viewRecord() {
+            window.location.href = "gerenjilu.html";
+            // 这里可以添加查看游戏记录的逻辑
+        }
+        // 页面加载时获取分数并显示
+        function showAchievementPopup(achievement) {
+    const popup = document.getElementById('achievement-popup');
+    const achievementTitle = document.getElementById('achievement-title');
+    const achievementDescription = document.getElementById('achievement-description');
+
+    // 更新弹窗内容
+    achievementTitle.textContent = achievement.name;
+    achievementDescription.textContent = achievement.description;
+
+    // 显示弹窗
+    popup.classList.add('show');
+}
+
+// 逐个显示成就的函数
+let currentIndex = 0;
+
+function showNextAchievement(achievements) {
+    if (currentIndex >= achievements.length) return; // 所有成就显示完毕，退出递归
+
+    // 显示当前成就
+    showAchievementPopup(achievements[currentIndex]);
+
+    // 单击屏幕显示下一个成就
+    const popup = document.getElementById('achievement-popup');
+    popup.onclick = () => {
+        popup.classList.remove('show'); // 关闭当前弹窗
+        currentIndex++; // 增加索引
+        showNextAchievement(achievements); // 显示下一个成就
+    };
+}
+    // 成就名称和描述的映射
+const achievementMap = {
+    A: { name: '野路子', description: '分数达到 100 取得胜利' },
+    B: { name: 'Alter the future', description: '接住所有秒表' },
+    C: { name: '接住天大鹅', description: '接住所有六只鹅' },
+    D: { name: '大户人家', description: '碰到十次炸弹仍然胜利' },
+    E: { name: '冰冻达人', description: '冰冻时间达到33秒' },
+};
+
+// 将布尔变量转换为成就列表
+function getUnlockedAchievements(achievements) {
+    const unlockedAchievements = [];
+    for (const key in achievements) {
+        if (achievements[key] && achievementMap[key]) {
+            unlockedAchievements.push(achievementMap[key]);
+        }
+    }
+    return unlockedAchievements;
+}
+        window.onload = function () {
+            // 从 localStorage 获取分数
+            const score = localStorage.getItem("gameScore");
+            if (score) {
+                // 将分数显示在指定的块中
+                document.getElementById("score-display").textContent = score;
+            } else {
+                // 如果没有分数，显示提示
+                document.getElementById("score-display").textContent = "无分数记录";
+            }
+  const achievements = JSON.parse(localStorage.getItem("achievements"));
+  if (achievements) {
+        const unlockedAchievements = getUnlockedAchievements(achievements);
+        console.log("Unlocked Achievements:", unlockedAchievements);
+        if (unlockedAchievements.length > 0) {
+            showNextAchievement(unlockedAchievements);
+        }
+    }
+
+   
+    // 显示成就弹窗的函数
+
+};
+
+
+
+        
+    </script>
+</body>
+</html>
