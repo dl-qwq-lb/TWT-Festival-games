@@ -450,8 +450,7 @@ function quitGame() {
 // 成就检测
 function checkAchievements() {
   // A: 取得胜利
-  if (!achievements.A && score <= -100 && timeLeft <= 0) {
-    //&& timeLeft < 0.25 我在这里出了一些问题
+  if (!achievements.A && score >= 100 && timeLeft <= 0.25) {
     unlockAchievement("A");
   }
 
@@ -614,6 +613,12 @@ document.addEventListener("visibilitychange", () => {
 window.addEventListener('resize', () => {
   initCanvas();
   targetBasketX = Math.max(0, Math.min(targetBasketX, canvas.width - basketWidth));
+});
+
+// 添加窗口resize事件
+window.addEventListener('resize', () => {
+    initCanvas();
+    targetBasketX = Math.max(0, Math.min(targetBasketX, canvas.width - basketWidth));
 });
 
 // 绑定按钮事件
