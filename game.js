@@ -16,6 +16,7 @@ const basketFrames = [
   "assets/images/frame1.png", 
   "assets/images/frame2.png",
   "assets/images/frame3.png",
+  "assets/images/frame4.png"
 ];
 const basketImages = []; // 存储加载后的帧图片
 let currentBasketFrame = 0; // 当前帧索引
