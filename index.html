@@ -1,166 +1,150 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>接桃子游戏</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <title>登录页面</title>
     <style>
-       body {
-    width: 100%;
-    height: 100vh;
-    touch-action: none;
-    margin: 0;
-    overflow: hidden;
-    background-image: url("assets/images/background.png");
-    background-size: cover; /* 修改为 cover */
-    background-position: center; /* 根据需求调整 */
-    background-repeat: no-repeat;
-    position: relative;
-}
-
-/* 移动端适配 */
-@media (orientation: portrait) {
-    body {
-        background-size: contain; /* 竖屏时完整显示 */
-        background-position: top center;
-    }
-}
-
-        canvas {
-            display: block;
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
         }
-
-        #score {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            font-size: 18px;
-            z-index: 100;
-            color: rgb(250, 3, 3);
+        .yemian{
+          display: flex;
         }
-
-        #timer {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            font-size: 18px;
-            z-index: 100;
-            color: rgb(7, 183, 252);
+        .dayemian{
+            
+            background-color: white;
         }
-
-        #pauseButton {
-            position: absolute;
-            top: 50px;
-            left: 10px;
+        input {
+            width: 70%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
             font-size: 16px;
-            padding: 15px;
-            z-index: 100;
-            cursor: pointer;
         }
-
-        #pauseMenu {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(255, 255, 255, 0.9);
-            padding: 20px;
-            border-radius: 10px;
-            text-align: center;
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .error-message {
+            color: red;
+            font-size: 14px;
+            margin-top: 10px;
             display: none;
-        }        
-
-        #pauseMenu button {
-            margin: 10px;
-            padding: 10px 20px;
-            font-size: 18px;
-            cursor: pointer;
         }
-
-        #achievementPanel {
-        max-width: 90%;
-        font-size: 14px;
-        }
-
-        @media (orientation: landscape) {
-        canvas {
-            height: 100%;
-        }
-        #achievementPanel {
+        #music-control {
+            position: absolute;
             top: 20px;
-            left: 20px;
+            right: 20px;
+            font-size: 2rem;
+            cursor: pointer;
+            transition: transform 0.3s ease;
         }
-    }
+        /* 旋转动画 */
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
+        }
+        .rotate {
+            animation: spin 2s linear infinite; /* 持续旋转 */
+        }
     </style>
 </head>
-
 <body>
-    <div id="score">得分: 0</div>
-    <div id="timer">时间: 1:00</div>
-    <button id="pauseButton">暂停</button>
-    <div id="pauseMenu">
-        <h2>游戏已暂停</h2>
-        <button id="resumeButton">继续游戏</button>
-        <button id="quitButton">退出</button>
+        <div class="dayemian">
+        <div class="yemian">
+        <div class="block">
+            <input type="text" id="username" name="username" placeholder="输入用户名">
+          </div>
+          <div>
+            <button id="randomUsernameBtn">随机生成用户名</button>
+           </div>
+          
     </div>
-    <canvas id="gameCanvas" width="800" height="600"></canvas>
-
-    <script src="game.js"></script>
-
-    <!-- 在body内添加成就面板 -->
-<div id="achievementPanel" class="collapsed">
-    <div class="panel-header">
-        <h3>成就系统</h3>
-        <button id="toggleAchievements">▲</button>
+    <a href="demo.html">
+        <button id="queren" onclick="login()">确认</button>
+      </a>
     </div>
-        <div class="achievement-list">
-        <div class="achievement" data-type="A">野路子：达到-100分取得胜利 <span class="locked">🔒</span></div>
-        <div class="achievement" data-type="B">Alter the future：接住所有秒表 <span class="locked">🔒</span></div>
-        <div class="achievement" data-type="C">接住天大鹅：接住所有六只鹅 <span class="locked">🔒</span></div>
-        <div class="achievement" data-type="D">大户人家——碰到十次炸弹仍然胜利 <span class="locked">🔒</span></div>
-        <div class="achievement" data-type="E">冰冻达人——冰冻时间达到33秒 <span class="locked">🔒</span></div>
+     <!-- 音乐控制按钮 -->
+     <div id="music-control">
+        <i class="fas fa-music"></i> <!-- 初始图标 -->
     </div>
-</div>
 
-<!-- 在HTML成就界面添加按钮 -->
-<!--<div class="achievement-controls">
-    <button id="resetAchievementsButton">重置所有成就</button>
-</div> -->
+    <!-- 背景音乐 -->
+    <audio id="background-music" loop>
+        <source src="background-music.mp3" type="audio/mpeg">
+        您的浏览器不支持音频播放。
+    </audio>
+    <script>
+        // 获取元素
+        const musicControl = document.getElementById('music-control');
+        const backgroundMusic = document.getElementById('background-music');
+        const musicIcon = musicControl.querySelector('i');
 
-<style>
-/* 添加CSS样式 */
-#achievementPanel {
-    position: absolute;
-    top: 100px;
-    left: 10px;
-    background: rgba(255, 255, 255, 0.9);
-    padding: 15px;
-    border-radius: 8px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.2);
-}
+        // 初始状态  
+        let isPlaying = false;
 
-.achievement {
-    margin: 8px 0;
-    color: #666;
-}
+        // 点击按钮控制音乐
+        musicControl.addEventListener('click', () => {
+            if (isPlaying) {
+                backgroundMusic.pause(); // 暂停音乐
+                musicIcon.classList.remove('rotate'); // 停止旋转
+            } else {
+                backgroundMusic.play(); // 播放音乐
+                musicIcon.classList.add('rotate'); // 开始旋转
+            }
+            isPlaying = !isPlaying; // 切换状态
+        });
 
-.achievement.unlocked {
-    color: #2c3e50;
-    font-weight: bold;
-}
-
-.achievement.unlocked .locked {
-    display: none;
-}
-
-.achievement.unlocked::after {
-    content: "✅";
-    margin-left: 8px;
-}
+        // 监听音乐结束事件（可选）
+        backgroundMusic.addEventListener('ended', () => {
+            musicIcon.classList.remove('rotate'); // 停止旋转
+            isPlaying = false;
+        });
 
 
-</style>
+    function generateRandomUsername() {
+      const adjectives = ['快乐的', '勇敢的', '聪明的', '神秘的', '优雅的'];
+      const nouns = ['熊猫', '狮子', '狐狸', '老虎', '狼'];
+      
+      const randomAdjective = adjectives[Math.floor(Math.random() * adjectives.length)];
+      const randomNoun = nouns[Math.floor(Math.random() * nouns.length)];
+      
+      return `${randomAdjective}${randomNoun}`;
+    }
+
+    // 获取DOM元素
+    const usernameInput = document.getElementById('username');
+    const randomUsernameBtn = document.getElementById('randomUsernameBtn');
+
+    // 绑定按钮点击事件
+    randomUsernameBtn.addEventListener('click', () => {
+      const randomUsername = generateRandomUsername();
+      usernameInput.value = randomUsername;
+    });
+    </script>
 </body>
-
 </html>
